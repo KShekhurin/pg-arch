@@ -1,32 +1,35 @@
 import pygame
 import sys
-
+from controllers import Controllers_manager 
 
 class Game_prefs:
-    def __init__(self, size, frame_rate, name):
+    def __init__(self, size, name, fps):
         self.size = size
-        self.FPS = frame_rate
         self.name = name
-
+        self.fps = fps
 
 class Game:
-    def __init__(self, preferences: Game_prefs, controllers, start_route):
+    def __init__(self, preferences: Game_prefs, controllers_manager: Controllers_manager):
         self.state = dict() 
-        self.state['route'] = start_route
+        self.state['route'] = controllers_manager.start_route
+        self.state['stop'] = False
 
-        self.controllers = map(
-            lambda controller: controller.connect_state(self.state),
-            controllers
-        )
-        
-        self.stop = False
+        self.controllers = controllers_manager.controllers_with_routes
+        self.connect_state_to_controllers()
 
-        #I'll try to make it not depending on exactly pygame (in future)
+        self.preferences = preferences
+        self.init_game()
+
+    def connect_state_to_controllers(self):
+        for route in self.controllers.keys():
+            self.controllers[route].connect_state(self.state)
+
+    def init_game(self):
         pygame.init()
-        pygame.display.set_caption(self.name)
-        self.screen = pygame.display.set_mode(self.size)
+        pygame.display.set_caption(self.preferences.name)
+        self.screen = pygame.display.set_mode(self.preferences.size)
         self.clock = pygame.time.Clock()
-    
+
     def check_special_events(self, events):
         for event in events:
                 if event.type == pygame.QUIT:
@@ -34,14 +37,13 @@ class Game:
                     sys.exit()
     
     def start(self):
-        while not self.stop:
-            self.clock.tick(self.FPS)
+        while not self.state['stop']:
+            self.clock.tick(self.preferences.fps)
 
-            controller_route = state['start_route']
+            controller_route = self.state['route']
 
             events = pygame.event.get()
             self.check_special_events(events)
 
-            controllers[controller_route].update(events)
-            controllers[controller_route].draw()
-
+            self.controllers[controller_route].update(events)
+            self.controllers[controller_route].draw()
